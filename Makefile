@@ -10,3 +10,7 @@ ArtworkSpinner_FILES += ArtworkSpinner.x
 ArtworkSpinner_CFLAGS += -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+
+SUBPROJECTS += ArtworkSpinnerPrefs
+
+include $(THEOS_MAKE_PATH)/aggregate.mk
