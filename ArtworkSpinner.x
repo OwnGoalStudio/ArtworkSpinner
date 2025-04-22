@@ -4,6 +4,7 @@
 #import <Foundation/NSUserDefaults+Private.h>
 
 #define PREF_PATH "/var/mobile/Library/Preferences/com.82flex.artworkspinnerprefs.plist"
+#define PREF_NOTIFY_NAME "com.82flex.artworkspinnerprefs/saved"
 
 static BOOL kIsEnabled = YES;
 static BOOL kIsEnabledInMediaControls = YES;
@@ -87,7 +88,7 @@ static void ReloadPrefs() {
 %ctor {
     ReloadPrefs();
     int _gNotifyToken;
-    notify_register_dispatch("com.82flex.artworkspinnerprefs/saved", &_gNotifyToken, dispatch_get_main_queue(), ^(int token) {
+    notify_register_dispatch(PREF_NOTIFY_NAME, &_gNotifyToken, dispatch_get_main_queue(), ^(int token) {
       ReloadPrefs();
     });
 }
