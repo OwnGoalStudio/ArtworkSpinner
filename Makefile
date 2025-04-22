@@ -2,6 +2,7 @@ export PACKAGE_VERSION := 1.1
 export TARGET := iphone:clang:16.5:14.0
 
 INSTALL_TARGET_PROCESSES += MediaRemoteUI
+INSTALL_TARGET_PROCESSES += SpringBoard
 
 include $(THEOS)/makefiles/common.mk
 

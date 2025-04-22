@@ -7,8 +7,10 @@
 #define PREF_PATH "/var/mobile/Library/Preferences/com.82flex.artworkspinnerprefs.plist"
 #define PREF_NOTIFY_NAME "com.82flex.artworkspinnerprefs/saved"
 
+@class MRUArtworkView;
+
 @interface ASMediaRemoteObserver : NSObject
-- (void)registerAnimationLayer:(CALayer *)layer;
+- (void)registerArtworkView:(MRUArtworkView *)view;
 @end
 
 static ASMediaRemoteObserver *gObserver = nil;
@@ -16,7 +18,6 @@ static ASMediaRemoteObserver *gObserver = nil;
 static BOOL kIsEnabled = YES;
 static BOOL kIsEnabledInMediaControls = YES;
 static BOOL kIsEnabledInCoverSheetBackground = YES;
-static BOOL kIsPauseSafe = NO;
 static CGFloat kSpeedExponent = 1.0;
 
 static void ReloadPrefs() {
@@ -35,80 +36,81 @@ static void ReloadPrefs() {
 
 @interface MRUArtworkView : UIView
 @property (nonatomic, strong) UIImageView *artworkImageView;
+@property (nonatomic, strong) UIViewPropertyAnimator *as_propertyAnimator;
+- (void)as_rotate;
+- (void)as_beginRotation;
+- (void)as_endRotation;
 @end
+
+%hook MRUArtworkView
+
+%property (nonatomic, strong) UIViewPropertyAnimator *as_propertyAnimator;
+
+%new
+- (void)as_rotate {
+    __weak __typeof(self) weakSelf = self;
+    UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:4.0 curve:UIViewAnimationCurveLinear animations:^{
+        __strong __typeof(weakSelf) strongSelf = weakSelf;
+        strongSelf.artworkImageView.transform = CGAffineTransformMakeRotation(M_PI);
+    }];
+    [animator addAnimations:^{
+        __strong __typeof(weakSelf) strongSelf = weakSelf;
+        strongSelf.artworkImageView.transform = CGAffineTransformRotate(strongSelf.artworkImageView.transform, M_PI);
+    }];
+    [animator addCompletion:^(UIViewAnimatingPosition finalPosition) {
+        __strong __typeof(weakSelf) strongSelf = weakSelf;
+        [strongSelf as_rotate];
+    }];
+    [animator startAnimation];
+    self.as_propertyAnimator = animator;
+}
+
+%new
+- (void)as_beginRotation {
+    if (!self.as_propertyAnimator) {
+        [self as_rotate];
+    }
+    [self.as_propertyAnimator startAnimation];
+}
+
+%new
+- (void)as_endRotation {
+    if (!self.as_propertyAnimator) {
+        [self as_rotate];
+    }
+    [self.as_propertyAnimator pauseAnimation];
+}
+
+%end
 
 @interface _TtC13MediaRemoteUI34CoverSheetBackgroundViewController : UIViewController
 - (MRUArtworkView *)artworkView;
-- (void)as_setupAnimation;
-- (CABasicAnimation *)as_rotationAnimation;
 @end
 
 %hook _TtC13MediaRemoteUI34CoverSheetBackgroundViewController
 
 - (void)viewWillAppear:(BOOL)animated {
-    %log; %orig;
+    %orig;
     if (!kIsEnabled || !kIsEnabledInCoverSheetBackground) {
         return;
     }
-    [self as_setupAnimation];
-}
-
-%new
-- (void)as_setupAnimation {
-    MRUArtworkView *artworkView = (MRUArtworkView *)[self artworkView];
-    if ([artworkView respondsToSelector:@selector(artworkImageView)]) {
-        [artworkView.artworkImageView.layer removeAnimationForKey:@"as_rotationAnimation"];
-        [artworkView.artworkImageView.layer addAnimation:[self as_rotationAnimation] forKey:@"as_rotationAnimation"];
-        [gObserver registerAnimationLayer:artworkView.artworkImageView.layer];
-    }
-}
-
-%new
-- (CABasicAnimation *)as_rotationAnimation {
-    CABasicAnimation *rotation = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
-    rotation.toValue = @(M_PI * 2);
-    rotation.duration = 4.0;
-    rotation.speed = kSpeedExponent;
-    rotation.repeatCount = HUGE_VALF;
-    return rotation;
+    [gObserver registerArtworkView:self.artworkView];
 }
 
 %end
 
 @interface MRUNowPlayingViewController : UIViewController
-- (UIView *)artworkView;
-- (void)as_setupAnimation;
-- (CABasicAnimation *)as_rotationAnimation;
+- (MRUArtworkView *)artworkView;
 @end
 
 %hook MRUNowPlayingViewController
 
 - (void)viewWillAppear:(BOOL)animated {
-    %log; %orig;
+    %orig;
     if (!kIsEnabled || !kIsEnabledInMediaControls) {
         return;
     }
-    [self as_setupAnimation];
-}
-
-%new
-- (void)as_setupAnimation {
-    MRUArtworkView *artworkView = (MRUArtworkView *)[self artworkView];
-    if ([artworkView respondsToSelector:@selector(artworkImageView)]) {
-        [artworkView.artworkImageView.layer removeAnimationForKey:@"as_rotationAnimation"];
-        [artworkView.artworkImageView.layer addAnimation:[self as_rotationAnimation] forKey:@"as_rotationAnimation"];
-        [gObserver registerAnimationLayer:artworkView.artworkImageView.layer];
-    }
-}
-
-%new
-- (CABasicAnimation *)as_rotationAnimation {
-    CABasicAnimation *rotation = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
-    rotation.toValue = @(M_PI * 2);
-    rotation.duration = 4.0;
-    rotation.speed = kSpeedExponent;
-    rotation.repeatCount = HUGE_VALF;
-    return rotation;
+    [gObserver registerArtworkView:self.artworkView];
 }
 
 %end
@@ -140,7 +142,7 @@ static void ReloadPrefs() {
         MRMediaRemoteSetWantsNowPlayingNotifications(true);
         MRMediaRemoteGetNowPlayingApplicationIsPlaying(dispatch_get_main_queue(), ^(Boolean isPlaying) {
             _isNowPlaying = isPlaying;
-            [self toggleLayerAnimations];
+            [self toggleArtworkAnimations];
         });
     }
     return self;
@@ -151,89 +153,77 @@ static void ReloadPrefs() {
     BOOL isPlaying = [userInfo[(__bridge NSNotificationName)kMRMediaRemoteNowPlayingApplicationIsPlayingUserInfoKey] boolValue];
     dispatch_async(dispatch_get_main_queue(), ^(void) {
         _isNowPlaying = isPlaying;
-        [self toggleLayerAnimations];
+        [self toggleArtworkAnimations];
     });
 }
 
-- (void)registerAnimationLayer:(CALayer *)layer {
-    if (!layer) {
+- (void)registerArtworkView:(MRUArtworkView *)view {
+    if (!view) {
         return;
     }
 
     NSMutableSet<ASWeakContainer *> *containersToRemove = [NSMutableSet set];
     for (ASWeakContainer *container in _weakContainers) {
-        if (!container.object || container.object == layer) {
+        if (!container.object || container.object == view) {
             [containersToRemove addObject:container];
         }
     }
     [_weakContainers minusSet:containersToRemove];
 
     ASWeakContainer *container = [[ASWeakContainer alloc] init];
-    container.object = layer;
+    container.object = view;
     [_weakContainers addObject:container];
 
-    [self toggleLayerAnimation:layer];
+    [self toggleArtworkAnimation:view];
 }
 
-- (void)toggleLayerAnimations {
+- (void)toggleArtworkAnimations {
     if (_isNowPlaying) {
-        [self resumeLayerAnimations];
+        [self resumeArtworkAnimations];
     } else {
-        [self pauseLayerAnimations];
+        [self pauseArtworkAnimations];
     }
 }
 
-- (void)pauseLayerAnimations {
+- (void)pauseArtworkAnimations {
     for (ASWeakContainer *container in _weakContainers) {
-        CALayer *layer = (CALayer *)container.object;
-        [self pauseLayerAnimation:layer];
+        MRUArtworkView *view = (MRUArtworkView *)container.object;
+        [self pauseArtworkAnimation:view];
     }
 }
 
-- (void)resumeLayerAnimations {
+- (void)resumeArtworkAnimations {
     for (ASWeakContainer *container in _weakContainers) {
-        CALayer *layer = (CALayer *)container.object;
-        [self resumeLayerAnimation:layer];
+        MRUArtworkView *view = (MRUArtworkView *)container.object;
+        [self resumeArtworkAnimation:view];
     }
 }
 
-- (void)toggleLayerAnimation:(CALayer *)layer {
+- (void)toggleArtworkAnimation:(MRUArtworkView *)view {
     if (_isNowPlaying) {
-        [self resumeLayerAnimation:layer];
+        [self resumeArtworkAnimation:view];
     } else {
-        [self pauseLayerAnimation:layer];
+        [self pauseArtworkAnimation:view];
     }
 }
 
-- (void)pauseLayerAnimation:(CALayer *)layer {
-    if (!layer || !kIsPauseSafe) {
+- (void)pauseArtworkAnimation:(MRUArtworkView *)view {
+    if (!view) {
         return;
     }
-    CFTimeInterval pausedTime = [layer convertTime:CACurrentMediaTime() fromLayer:nil];
-    layer.speed = 0.0;
-    layer.timeOffset = pausedTime;
+    [view as_endRotation];
 }
 
-- (void)resumeLayerAnimation:(CALayer *)layer {
-    if (!layer) {
+- (void)resumeArtworkAnimation:(MRUArtworkView *)view {
+    if (!view) {
         return;
     }
-    CFTimeInterval pausedTime = [layer timeOffset];
-    layer.speed = 1.0;
-    layer.timeOffset = 0.0;
-    layer.beginTime = 0.0;
-    CFTimeInterval timeSincePause = [layer convertTime:CACurrentMediaTime() fromLayer:nil] - pausedTime;
-    layer.beginTime = timeSincePause;
+    [view as_beginRotation];
 }
 
 @end
 
 %ctor {
-    NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
-    if ([bundleIdentifier isEqualToString:@"com.apple.MediaRemoteUI"]) {
-        kIsPauseSafe = YES;
-    }
-
     ReloadPrefs();
     int _gNotifyToken;
     notify_register_dispatch(PREF_NOTIFY_NAME, &_gNotifyToken, dispatch_get_main_queue(), ^(int token) {
