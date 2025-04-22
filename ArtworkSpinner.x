@@ -174,7 +174,7 @@ static void ReloadPrefs() {
 
 - (void)scene:(id)arg1 didUpdateClientSettingsWithDiff:(id)arg2 oldClientSettings:(id)arg3 transitionContext:(id)arg4 {
     %orig;
-    if (!kIsEnabled || !kIsEnabledInDynamicIsland) {
+    if (!kIsEnabled || !kIsEnabledInDynamicIsland || ![self.clientIdentifier isEqualToString:@"com.apple.MediaRemoteUI"]) {
         return;
     }
     [gObserver registerRotator:self.leadingView];
