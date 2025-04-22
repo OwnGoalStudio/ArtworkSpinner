@@ -1,5 +1,5 @@
-export PACKAGE_VERSION := 1.0
-export TARGET := iphone:clang:latest:14.0
+export PACKAGE_VERSION := 1.1
+export TARGET := iphone:clang:16.5:14.0
 
 INSTALL_TARGET_PROCESSES += MediaRemoteUI
 
@@ -9,6 +9,9 @@ TWEAK_NAME += ArtworkSpinner
 
 ArtworkSpinner_FILES += ArtworkSpinner.x
 ArtworkSpinner_CFLAGS += -fobjc-arc
+ArtworkSpinner_CFLAGS += -Iheaders
+
+ArtworkSpinner_PRIVATE_FRAMEWORKS += MediaRemote
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
