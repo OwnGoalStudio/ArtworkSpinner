@@ -49,7 +49,7 @@ static void ReloadPrefs() {
 %new
 - (void)as_rotate {
     __weak __typeof(self) weakSelf = self;
-    int repeatTimes = 100;
+    int repeatTimes = 10;
     UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:4.0 * repeatTimes / kSpeedExponent curve:UIViewAnimationCurveLinear animations:^{
         __strong __typeof(weakSelf) strongSelf = weakSelf;
         strongSelf.artworkImageView.transform = CGAffineTransformRotate(strongSelf.artworkImageView.transform, M_PI);
@@ -72,15 +72,13 @@ static void ReloadPrefs() {
 - (void)as_beginRotation {
     if (!self.as_propertyAnimator) {
         [self as_rotate];
+    } else {
+        [self.as_propertyAnimator startAnimation];
     }
-    [self.as_propertyAnimator startAnimation];
 }
 
 %new
 - (void)as_endRotation {
-    if (!self.as_propertyAnimator) {
-        [self as_rotate];
-    }
     [self.as_propertyAnimator pauseAnimation];
 }
 
