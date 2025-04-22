@@ -49,14 +49,17 @@ static void ReloadPrefs() {
 %new
 - (void)as_rotate {
     __weak __typeof(self) weakSelf = self;
-    UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:4.0 curve:UIViewAnimationCurveLinear animations:^{
-        __strong __typeof(weakSelf) strongSelf = weakSelf;
-        strongSelf.artworkImageView.transform = CGAffineTransformMakeRotation(M_PI);
-    }];
-    [animator addAnimations:^{
+    int repeatTimes = 100;
+    UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:4.0 * repeatTimes / kSpeedExponent curve:UIViewAnimationCurveLinear animations:^{
         __strong __typeof(weakSelf) strongSelf = weakSelf;
         strongSelf.artworkImageView.transform = CGAffineTransformRotate(strongSelf.artworkImageView.transform, M_PI);
     }];
+    while (--repeatTimes) {
+        [animator addAnimations:^{
+            __strong __typeof(weakSelf) strongSelf = weakSelf;
+            strongSelf.artworkImageView.transform = CGAffineTransformRotate(strongSelf.artworkImageView.transform, M_PI);
+        }];
+    }
     [animator addCompletion:^(UIViewAnimatingPosition finalPosition) {
         __strong __typeof(weakSelf) strongSelf = weakSelf;
         [strongSelf as_rotate];
