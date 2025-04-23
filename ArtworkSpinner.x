@@ -50,6 +50,14 @@ static void ReloadPrefs() {
 
 %property (nonatomic, strong) UIViewPropertyAnimator *as_propertyAnimator;
 
+- (void)dealloc {
+    if (self.as_propertyAnimator) {
+        [self.as_propertyAnimator stopAnimation:YES];
+        self.as_propertyAnimator = nil;
+    }
+    %orig;
+}
+
 %new
 - (void)as_rotate {
     UIView *targetView = nil;
