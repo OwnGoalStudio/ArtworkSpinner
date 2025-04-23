@@ -41,6 +41,7 @@ static void ReloadPrefs() {
 }
 
 @interface MRUArtworkView : UIView <ASRotator>
+@property (nonatomic, strong) UIView *packageView;  // <- MRUActivityArtworkView?
 @property (nonatomic, strong) UIImageView *artworkImageView;
 @property (nonatomic, strong) UIViewPropertyAnimator *as_propertyAnimator;
 @end
@@ -51,18 +52,27 @@ static void ReloadPrefs() {
 
 %new
 - (void)as_rotate {
-    __weak __typeof(self) weakSelf = self;
+    UIView *targetView = nil;
+    if ([self respondsToSelector:@selector(packageView)]) {
+        targetView = self.packageView;
+    } else if ([self respondsToSelector:@selector(artworkImageView)]) {
+        targetView = self.artworkImageView;
+    } else {
+        return;
+    }
+    if (!targetView) {
+        return;
+    }
     int repeatTimes = 10;
     UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:4.0 * repeatTimes / kSpeedExponent curve:UIViewAnimationCurveLinear animations:^{
-        __strong __typeof(weakSelf) strongSelf = weakSelf;
-        strongSelf.artworkImageView.transform = CGAffineTransformRotate(strongSelf.artworkImageView.transform, M_PI);
+        targetView.transform = CGAffineTransformRotate(targetView.transform, M_PI);
     }];
     while (--repeatTimes) {
         [animator addAnimations:^{
-            __strong __typeof(weakSelf) strongSelf = weakSelf;
-            strongSelf.artworkImageView.transform = CGAffineTransformRotate(strongSelf.artworkImageView.transform, M_PI);
+            targetView.transform = CGAffineTransformRotate(targetView.transform, M_PI);
         }];
     }
+    __weak __typeof(self) weakSelf = self;
     [animator addCompletion:^(UIViewAnimatingPosition finalPosition) {
         __strong __typeof(weakSelf) strongSelf = weakSelf;
         [strongSelf as_rotate];
@@ -193,6 +203,30 @@ static void ReloadPrefs() {
 
 %end
 
+@interface MRUActivityNowPlayingView : UIView <ASRotator>
+@property (nonatomic, strong) NSArray<MRUArtworkView *> *artworkViews;
+@end
+
+%hook MRUActivityNowPlayingView
+
+- (instancetype)initWithWaveformView:(id)arg1 {
+    id ret = %orig;
+    if (!kIsEnabled || !kIsEnabledInDynamicIsland ||
+        ![self respondsToSelector:@selector(artworkViews)]
+    ) {
+        return ret;
+    }
+    for (MRUArtworkView *artworkView in self.artworkViews) {
+        if (![artworkView respondsToSelector:@selector(packageView)]) {
+            continue;
+        }
+        [gObserver registerRotator:artworkView];
+    }
+    return ret;
+}
+
+%end
+
 @interface ASWeakContainer : NSObject
 @property (nonatomic, weak) NSObject *object;
 @end
@@ -239,6 +273,10 @@ static void ReloadPrefs() {
     if (!rotator) {
         return;
     }
+
+#if DEBUG
+    NSLog(@"[ASMediaRemoteObserver] Registering rotator: %@", rotator);
+#endif
 
     NSMutableSet<ASWeakContainer *> *containersToRemove = [NSMutableSet set];
     for (ASWeakContainer *container in _weakContainers) {
