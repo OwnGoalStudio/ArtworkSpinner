@@ -112,7 +112,7 @@ void ArtworkSpinnerBatchKillAll(NSArray<NSString *> *processNames, BOOL softly) 
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == 3) {
+    if (indexPath.section == 4) {
         PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
         NSString *key = [specifier propertyForKey:@"cell"];
         if ([key isEqualToString:@"PSButtonCell"]) {

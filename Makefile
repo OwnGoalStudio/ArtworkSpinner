@@ -8,7 +8,7 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME += ArtworkSpinner
 
-ArtworkSpinner_FILES += ArtworkSpinner.x
+ArtworkSpinner_FILES += ArtworkSpinner.xm
 ArtworkSpinner_CFLAGS += -fobjc-arc
 ArtworkSpinner_CFLAGS += -Iheaders
 
