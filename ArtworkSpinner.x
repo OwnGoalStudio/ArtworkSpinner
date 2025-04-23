@@ -95,7 +95,10 @@ static void ReloadPrefs() {
 
 - (void)viewWillAppear:(BOOL)animated {
     %orig;
-    if (!kIsEnabled || !kIsEnabledInCoverSheetBackground) {
+    if (!kIsEnabled || !kIsEnabledInCoverSheetBackground ||
+        ![self respondsToSelector:@selector(artworkView)] ||
+        ![self.artworkView respondsToSelector:@selector(artworkImageView)]
+    ) {
         return;
     }
     [gObserver registerRotator:self.artworkView];
@@ -111,7 +114,10 @@ static void ReloadPrefs() {
 
 - (void)viewWillAppear:(BOOL)animated {
     %orig;
-    if (!kIsEnabled || !kIsEnabledInMediaControls) {
+    if (!kIsEnabled || !kIsEnabledInMediaControls ||
+        ![self respondsToSelector:@selector(artworkView)] ||
+        ![self.artworkView respondsToSelector:@selector(artworkImageView)]
+    ) {
         return;
     }
     [gObserver registerRotator:self.artworkView];
@@ -119,13 +125,35 @@ static void ReloadPrefs() {
 
 %end
 
-@interface SBSystemApertureSceneElementAccessoryView : UIView <ASRotator>
+@interface SBSystemApertureSceneElement : NSObject <ASRotator>
+@property (nonatomic, copy, readonly) NSString *clientIdentifier;
+@property (nonatomic, strong) UIView *leadingView;
 @property (nonatomic, strong) UIViewPropertyAnimator *as_propertyAnimator;
 @end
 
-%hook SBSystemApertureSceneElementAccessoryView
+%hook SBSystemApertureSceneElement
 
 %property (nonatomic, strong) UIViewPropertyAnimator *as_propertyAnimator;
+
+- (void)scene:(id)arg1 didUpdateClientSettingsWithDiff:(id)arg2 oldClientSettings:(id)arg3 transitionContext:(id)arg4 {
+    %orig;
+    if (!kIsEnabled || !kIsEnabledInDynamicIsland ||
+        ![self respondsToSelector:@selector(leadingView)] ||
+        ![self respondsToSelector:@selector(clientIdentifier)] ||
+        ![self.clientIdentifier isEqualToString:@"com.apple.MediaRemoteUI"]
+    ) {
+        return;
+    }
+    [gObserver registerRotator:self];
+}
+
+- (void)dealloc {
+    if (self.as_propertyAnimator) {
+        [self.as_propertyAnimator stopAnimation:YES];
+        self.as_propertyAnimator = nil;
+    }
+    %orig;
+}
 
 %new
 - (void)as_rotate {
@@ -133,12 +161,12 @@ static void ReloadPrefs() {
     int repeatTimes = 10;
     UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:4.0 * repeatTimes / kSpeedExponent curve:UIViewAnimationCurveLinear animations:^{
         __strong __typeof(weakSelf) strongSelf = weakSelf;
-        strongSelf.transform = CGAffineTransformRotate(strongSelf.transform, M_PI);
+        strongSelf.leadingView.transform = CGAffineTransformRotate(strongSelf.leadingView.transform, M_PI);
     }];
     while (--repeatTimes) {
         [animator addAnimations:^{
             __strong __typeof(weakSelf) strongSelf = weakSelf;
-            strongSelf.transform = CGAffineTransformRotate(strongSelf.transform, M_PI);
+            strongSelf.leadingView.transform = CGAffineTransformRotate(strongSelf.leadingView.transform, M_PI);
         }];
     }
     [animator addCompletion:^(UIViewAnimatingPosition finalPosition) {
@@ -161,23 +189,6 @@ static void ReloadPrefs() {
 %new
 - (void)as_endRotation {
     [self.as_propertyAnimator pauseAnimation];
-}
-
-%end
-
-@interface SBSystemApertureSceneElement : NSObject
-@property (nonatomic, copy, readonly) NSString *clientIdentifier;
-@property (nonatomic, strong) SBSystemApertureSceneElementAccessoryView *leadingView;
-@end
-
-%hook SBSystemApertureSceneElement
-
-- (void)scene:(id)arg1 didUpdateClientSettingsWithDiff:(id)arg2 oldClientSettings:(id)arg3 transitionContext:(id)arg4 {
-    %orig;
-    if (!kIsEnabled || !kIsEnabledInDynamicIsland || ![self.clientIdentifier isEqualToString:@"com.apple.MediaRemoteUI"]) {
-        return;
-    }
-    [gObserver registerRotator:self.leadingView];
 }
 
 %end
