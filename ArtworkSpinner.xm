@@ -47,13 +47,25 @@ static void ReloadPrefs() {
     kIsMediaProgressEnabled = settings[@"IsMediaProgressEnabled"] ? [settings[@"IsMediaProgressEnabled"] boolValue] : YES;
 }
 
-%group ArtworkSpinner
-
 @interface MRUArtworkView : UIView <ASRotator>
 @property (nonatomic, strong) UIView *packageView;  // <- MRUActivityArtworkView?
 @property (nonatomic, strong) UIImageView *artworkImageView;
 @property (nonatomic, strong) UIViewPropertyAnimator *as_propertyAnimator;
 @end
+
+@interface _TtC13MediaRemoteUI34CoverSheetBackgroundViewController : UIViewController
+- (MRUArtworkView *)artworkView;
+@end
+
+@interface MRUNowPlayingViewController : UIViewController
+- (MRUArtworkView *)artworkView;
+@end
+
+@interface MRUActivityNowPlayingView : UIView <ASRotator>
+@property (nonatomic, strong) NSArray<MRUArtworkView *> *artworkViews;
+@end
+
+%group ArtworkSpinner
 
 %hook MRUArtworkView
 
@@ -114,10 +126,6 @@ static void ReloadPrefs() {
 
 %end
 
-@interface _TtC13MediaRemoteUI34CoverSheetBackgroundViewController : UIViewController
-- (MRUArtworkView *)artworkView;
-@end
-
 %hook _TtC13MediaRemoteUI34CoverSheetBackgroundViewController
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -133,10 +141,6 @@ static void ReloadPrefs() {
 
 %end
 
-@interface MRUNowPlayingViewController : UIViewController
-- (MRUArtworkView *)artworkView;
-@end
-
 %hook MRUNowPlayingViewController
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -151,10 +155,6 @@ static void ReloadPrefs() {
 }
 
 %end
-
-@interface MRUActivityNowPlayingView : UIView <ASRotator>
-@property (nonatomic, strong) NSArray<MRUArtworkView *> *artworkViews;
-@end
 
 %hook MRUActivityNowPlayingView
 
@@ -191,6 +191,8 @@ static void ReloadPrefs() {
     NSTimeInterval _playbackRate;
     NSTimeInterval _reportTime;
     CADisplayLink *_displayLink;
+    CGFloat _backgroundAlpha;
+    UIColor *_backgroundColor;
 }
 
 - (void)layoutSubviews {
@@ -233,13 +235,24 @@ static void ReloadPrefs() {
 
 - (void)reloadVisibility {
     [self setNeedsDisplay];
+    UIView *decorLine = nil;
+    NSArray<UIView *> *decorViews = self.superview.subviews.firstObject.subviews;
+    if (decorViews.count > 1) {
+        decorLine = decorViews[1];
+        _backgroundAlpha = decorLine.alpha;
+        _backgroundColor = decorLine.backgroundColor;
+    }
     if (self.bounds.size.height < 48 && _isStable && _duration > 1) {
         if (self.alpha < 1e-3) {
             [UIView animateWithDuration:0.25 animations:^{
                 self.alpha = 1;
             } completion:nil];
+            [UIView transitionWithView:self.superview duration:0.25 options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
+                decorLine.hidden = YES;
+            } completion:nil];
         }
     } else {
+        decorLine.hidden = NO;
         self.alpha = 0;
     }
 }
@@ -277,7 +290,11 @@ static void ReloadPrefs() {
                                                          cornerRadius:cornerRadius];
 
     // Draw background track
-    [[UIColor colorWithWhite:0.7 alpha:0.3] setStroke];
+    if (_backgroundColor && _backgroundAlpha > 1e-2) {
+        [[_backgroundColor colorWithAlphaComponent:_backgroundAlpha] setStroke];
+    } else {
+        [[UIColor colorWithWhite:0.7 alpha:0.35] setStroke];
+    }
     trackPath.lineWidth = lineWidth;
     [trackPath stroke];
 
@@ -505,7 +522,6 @@ static void ReloadPrefs() {
 
 - (void)handleIsPlayingDidChangeNotification:(NSNotification *)noti {
     NSDictionary *userInfo = noti.userInfo;
-    NSLog(@"[ArtworkSpinner] Received notification: %@", userInfo.allKeys);
     BOOL isPlaying = [userInfo[(__bridge NSString *)kMRMediaRemoteNowPlayingApplicationIsPlayingUserInfoKey] boolValue];
     [self handleIsPlayingDidChange:isPlaying];
 }
@@ -525,7 +541,6 @@ static void ReloadPrefs() {
 }
 
 - (void)handleNowPlayingInfoDidChange:(NSDictionary *)userInfo {
-    NSLog(@"[ArtworkSpinner] Received notification: %@", userInfo.allKeys);
     _currentTime = [userInfo[(__bridge NSString *)kMRMediaRemoteNowPlayingInfoElapsedTime] doubleValue];
     _duration = [userInfo[(__bridge NSString *)kMRMediaRemoteNowPlayingInfoDuration] doubleValue];
     _playbackRate = [userInfo[(__bridge NSString *)kMRMediaRemoteNowPlayingInfoPlaybackRate] doubleValue];
