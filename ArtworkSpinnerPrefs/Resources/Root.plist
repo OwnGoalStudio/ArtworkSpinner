@@ -122,6 +122,38 @@
 			<key>PostNotification</key>
 			<string>com.82flex.artworkspinnerprefs/saved</string>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>cellClass</key>
+			<string>ArtworkSpinnerColorCell</string>
+			<key>default</key>
+			<string>#32c759</string>
+			<key>defaults</key>
+			<string>com.82flex.artworkspinnerprefs</string>
+			<key>key</key>
+			<string>ForegroundColorLight</string>
+			<key>label</key>
+			<string>Light Color</string>
+			<key>PostNotification</key>
+			<string>com.82flex.artworkspinnerprefs/saved</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>cellClass</key>
+			<string>ArtworkSpinnerColorCell</string>
+			<key>default</key>
+			<string>#2cd057</string>
+			<key>defaults</key>
+			<string>com.82flex.artworkspinnerprefs</string>
+			<key>key</key>
+			<string>ForegroundColorDark</string>
+			<key>label</key>
+			<string>Dark Color</string>
+			<key>PostNotification</key>
+			<string>com.82flex.artworkspinnerprefs/saved</string>
+		</dict>
 
 		<dict>
 			<key>cell</key>

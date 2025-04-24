@@ -7,6 +7,8 @@ include $(THEOS)/makefiles/common.mk
 BUNDLE_NAME := ArtworkSpinnerPrefs
 
 ArtworkSpinnerPrefs_FILES += ArtworkSpinnerRootListController.m
+ArtworkSpinnerPrefs_FILES += ArtworkSpinnerColorCell.m
+ArtworkSpinnerPrefs_FILES += UIColor+.m
 ArtworkSpinnerPrefs_CFLAGS += -fobjc-arc
 
 ArtworkSpinnerPrefs_FRAMEWORKS += UIKit

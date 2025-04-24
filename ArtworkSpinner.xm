@@ -4,6 +4,8 @@
 #import <Foundation/NSUserDefaults+Private.h>
 #import <MediaRemote/MediaRemote+Private.h>
 
+#import "UIColor+.h"
+
 #define PREF_PATH "/var/mobile/Library/Preferences/com.82flex.artworkspinnerprefs.plist"
 #define PREF_NOTIFY_NAME "com.82flex.artworkspinnerprefs/saved"
 
@@ -29,6 +31,14 @@ static BOOL kIsEnabledInDynamicIsland = YES;
 static CGFloat kSpeedExponent = 1.0;
 
 static BOOL kIsMediaProgressEnabled = YES;
+static UIColor *kMediaProgressForegroundColor = nil;
+
+static UIColor *asColorWithHexString(NSString *hexString) {
+    if (!hexString) {
+        return nil;
+    }
+    return [UIColor as_colorWithExternalRepresentation:hexString];
+}
 
 static void ReloadPrefs() {
     static NSUserDefaults *prefs = nil;
@@ -45,6 +55,22 @@ static void ReloadPrefs() {
     kSpeedExponent = settings[@"SpeedExponent"] ? [settings[@"SpeedExponent"] doubleValue] : 1.0;
 
     kIsMediaProgressEnabled = settings[@"IsMediaProgressEnabled"] ? [settings[@"IsMediaProgressEnabled"] boolValue] : YES;
+
+    NSString *lightFgColorStr = settings[@"ForegroundColorLight"] ? settings[@"ForegroundColorLight"] : @"#32c759";
+    NSString *darkFgColorStr = settings[@"ForegroundColorDark"] ? settings[@"ForegroundColorDark"] : @"#2cd057";
+
+    UIColor *lightFgColor = asColorWithHexString(lightFgColorStr);
+    UIColor *darkFgColor = asColorWithHexString(darkFgColorStr);
+
+    UIColor *mixedColor = [[UIColor alloc] initWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return darkFgColor;
+        } else {
+            return lightFgColor;
+        }
+    }];
+
+    kMediaProgressForegroundColor = mixedColor;
 }
 
 @interface MRUArtworkView : UIView <ASRotator>
@@ -191,6 +217,7 @@ static void ReloadPrefs() {
     NSTimeInterval _playbackRate;
     NSTimeInterval _reportTime;
     CADisplayLink *_displayLink;
+    UIColor *_foregroundColor;
     CGFloat _backgroundAlpha;
     UIColor *_backgroundColor;
 }
@@ -234,7 +261,7 @@ static void ReloadPrefs() {
 }
 
 - (void)reloadVisibility {
-    [self setNeedsDisplay];
+    _foregroundColor = [kMediaProgressForegroundColor resolvedColorWithTraitCollection:self.traitCollection];
     UIView *decorLine = nil;
     NSArray<UIView *> *decorViews = self.superview.subviews.firstObject.subviews;
     if (decorViews.count > 1) {
@@ -242,7 +269,8 @@ static void ReloadPrefs() {
         _backgroundAlpha = decorLine.alpha;
         _backgroundColor = decorLine.backgroundColor;
     }
-    if (self.bounds.size.height < 48 && _isStable && _duration > 1) {
+    [self setNeedsDisplay];
+    if (self.bounds.size.height < 48 && _isStable && _isPlaying && _duration > 1) {
         if (self.alpha < 1e-3) {
             [UIView animateWithDuration:0.25 animations:^{
                 self.alpha = 1;
@@ -263,7 +291,7 @@ static void ReloadPrefs() {
 
 - (void)drawRect:(CGRect)rect {
     // Don't draw anything if duration is too short
-    if (_duration < 1) {
+    if (!_isPlaying || _duration < 1) {
         return;
     }
 
@@ -427,7 +455,7 @@ static void ReloadPrefs() {
     }
 
     // Draw the progress line
-    [[UIColor systemBlueColor] setStroke];
+    [(_foregroundColor ?: [UIColor systemBlueColor]) setStroke];
     progressPath.lineWidth = lineWidth;
     [progressPath stroke];
 
