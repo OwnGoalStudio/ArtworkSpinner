@@ -1,4 +1,4 @@
-export PACKAGE_VERSION := 1.5
+export PACKAGE_VERSION := 1.6
 export TARGET := iphone:clang:16.5:14.0
 
 INSTALL_TARGET_PROCESSES += MediaRemoteUI
